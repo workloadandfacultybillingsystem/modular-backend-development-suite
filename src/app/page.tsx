@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   ArrowRight,
   Grid3x3,
-  Zap
+  Zap,
+  History
 } from "lucide-react";
 
 export default function Home() {
@@ -42,6 +43,12 @@ export default function Home() {
               <Button size="lg" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-6 text-lg">
                 Open Timetable Manager
                 <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+            <Link href="/activity-logs">
+              <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
+                <History className="w-5 h-5 mr-2" />
+                View Activity Logs
               </Button>
             </Link>
           </div>
@@ -133,6 +140,19 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
             </Card>
+
+            {/* NEW Feature 7 - Activity Logging */}
+            <Card className="border-2 hover:border-cyan-500 transition-colors hover:shadow-lg">
+              <CardHeader>
+                <div className="w-12 h-12 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center mb-4">
+                  <History className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+                </div>
+                <CardTitle>Complete Activity Logging</CardTitle>
+                <CardDescription>
+                  Comprehensive audit trail of all system actions with detailed tracking and analytics.
+                </CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </div>
       </div>
@@ -209,6 +229,22 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold">
+                    5
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                    Track Every Action
+                  </h3>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    Every operation is automatically logged with detailed audit trails, timestamps, and user information for complete transparency.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -226,12 +262,18 @@ export default function Home() {
                 Get started with automated conflict detection and intelligent scheduling today.
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
+            <CardContent className="text-center flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/timetable">
                 <Button size="lg" variant="secondary" className="px-8 py-6 text-lg">
                   <Calendar className="w-5 h-5 mr-2" />
                   Launch Timetable Manager
                   <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+              <Link href="/activity-logs">
+                <Button size="lg" variant="outline" className="px-8 py-6 text-lg border-white text-white hover:bg-white/10">
+                  <History className="w-5 h-5 mr-2" />
+                  View Activity Logs
                 </Button>
               </Link>
             </CardContent>
@@ -250,6 +292,9 @@ export default function Home() {
             <div className="flex gap-6">
               <Link href="/timetable" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                 Timetable
+              </Link>
+              <Link href="/activity-logs" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+                Activity Logs
               </Link>
             </div>
           </div>

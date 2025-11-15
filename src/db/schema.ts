@@ -37,3 +37,21 @@ export const timetable = sqliteTable('timetable', {
   studentGroup: text('student_group').notNull(),
   createdAt: text('created_at').notNull(),
 });
+
+// Activity Logs table
+export const activityLogs = sqliteTable('activity_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  actionType: text('action_type').notNull(),
+  userId: text('user_id'),
+  userName: text('user_name'),
+  timestamp: text('timestamp').notNull(),
+  description: text('description').notNull(),
+  referenceType: text('reference_type'),
+  referenceId: integer('reference_id'),
+  previousValue: text('previous_value'),
+  newValue: text('new_value'),
+  metadata: text('metadata'),
+  severity: text('severity').notNull().default('info'),
+  isSystemAction: integer('is_system_action', { mode: 'boolean' }).default(false),
+  createdAt: text('created_at').notNull(),
+});

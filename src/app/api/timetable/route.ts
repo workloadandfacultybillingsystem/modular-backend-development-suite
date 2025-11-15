@@ -1,7 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { timetable, faculty, subjects, classrooms } from '@/db/schema';
+import { timetable, faculty, subjects, classrooms, activityLogs } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+
+// Helper function to log activity
+async function logActivity(activityData: {
+  actionType: string;
+  description: string;
+  referenceType?: string;
+  referenceId?: number;
+  previousValue?: string;
+  newValue?: string;
+  metadata?: string;
+  severity?: string;
+}) {
+  try {
+    await db.insert(activityLogs).values({
+      actionType: activityData.actionType,
+      description: activityData.description,
+      referenceType: activityData.referenceType || null,
+      referenceId: activityData.referenceId || null,
+      previousValue: activityData.previousValue || null,
+      newValue: activityData.newValue || null,
+      metadata: activityData.metadata || null,
+      severity: activityData.severity || 'info',
+      isSystemAction: false,
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+    // Don't block the main operation if logging fails
+  }
+}
 
 // Helper function to check if two time slots overlap
 function timeSlotsOverlap(start1: string, end1: string, start2: string, end2: string): boolean {
@@ -228,19 +259,29 @@ export async function POST(request: NextRequest) {
       if (hasTimeOverlap) {
         // Conflict 1: Faculty conflict
         if (entry.facultyId === parseInt(facultyId)) {
+          const conflictDetails = {
+            type: 'faculty',
+            facultyName: entry.facultyName,
+            day: dayOfWeek,
+            existingStartTime: entry.startTime,
+            existingEndTime: entry.endTime,
+            requestedStartTime: startTime,
+            requestedEndTime: endTime,
+          };
+
+          // Log conflict detection
+          await logActivity({
+            actionType: 'CONFLICT_DETECTED',
+            description: `Faculty conflict detected: ${entry.facultyName} already has a class on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
+            metadata: JSON.stringify(conflictDetails),
+            severity: 'warning',
+          });
+
           return NextResponse.json(
             {
               error: `Faculty conflict: ${entry.facultyName} already has a class on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
               code: 'FACULTY_CONFLICT',
-              conflictDetails: {
-                type: 'faculty',
-                facultyName: entry.facultyName,
-                day: dayOfWeek,
-                existingStartTime: entry.startTime,
-                existingEndTime: entry.endTime,
-                requestedStartTime: startTime,
-                requestedEndTime: endTime,
-              }
+              conflictDetails
             },
             { status: 409 }
           );
@@ -248,19 +289,29 @@ export async function POST(request: NextRequest) {
 
         // Conflict 2: Classroom conflict
         if (entry.classroomId === parseInt(classroomId)) {
+          const conflictDetails = {
+            type: 'classroom',
+            classroomNumber: entry.classroomNumber,
+            day: dayOfWeek,
+            existingStartTime: entry.startTime,
+            existingEndTime: entry.endTime,
+            requestedStartTime: startTime,
+            requestedEndTime: endTime,
+          };
+
+          // Log conflict detection
+          await logActivity({
+            actionType: 'CONFLICT_DETECTED',
+            description: `Classroom conflict detected: ${entry.classroomNumber} is already booked on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
+            metadata: JSON.stringify(conflictDetails),
+            severity: 'warning',
+          });
+
           return NextResponse.json(
             {
               error: `Classroom conflict: ${entry.classroomNumber} is already booked on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
               code: 'CLASSROOM_CONFLICT',
-              conflictDetails: {
-                type: 'classroom',
-                classroomNumber: entry.classroomNumber,
-                day: dayOfWeek,
-                existingStartTime: entry.startTime,
-                existingEndTime: entry.endTime,
-                requestedStartTime: startTime,
-                requestedEndTime: endTime,
-              }
+              conflictDetails
             },
             { status: 409 }
           );
@@ -268,20 +319,30 @@ export async function POST(request: NextRequest) {
 
         // Conflict 3: Student group conflict (same semester and student group)
         if (entry.semester === semester && entry.studentGroup === studentGroup) {
+          const conflictDetails = {
+            type: 'student_group',
+            semester: semester,
+            studentGroup: studentGroup,
+            day: dayOfWeek,
+            existingStartTime: entry.startTime,
+            existingEndTime: entry.endTime,
+            requestedStartTime: startTime,
+            requestedEndTime: endTime,
+          };
+
+          // Log conflict detection
+          await logActivity({
+            actionType: 'CONFLICT_DETECTED',
+            description: `Student group conflict detected: ${studentGroup} in ${semester} already has a class on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
+            metadata: JSON.stringify(conflictDetails),
+            severity: 'warning',
+          });
+
           return NextResponse.json(
             {
               error: `Student group conflict: ${studentGroup} in ${semester} already has a class on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
               code: 'STUDENT_GROUP_CONFLICT',
-              conflictDetails: {
-                type: 'student_group',
-                semester: semester,
-                studentGroup: studentGroup,
-                day: dayOfWeek,
-                existingStartTime: entry.startTime,
-                existingEndTime: entry.endTime,
-                requestedStartTime: startTime,
-                requestedEndTime: endTime,
-              }
+              conflictDetails
             },
             { status: 409 }
           );
@@ -341,6 +402,16 @@ export async function POST(request: NextRequest) {
       .where(eq(timetable.id, newEntry[0].id))
       .limit(1);
 
+    // Log successful timetable creation
+    await logActivity({
+      actionType: 'TIMETABLE_CREATED',
+      description: `Class scheduled: ${completeEntry[0].subject?.name} by ${completeEntry[0].faculty?.name} on ${dayOfWeek} at ${startTime} in ${completeEntry[0].classroom?.roomNumber}`,
+      referenceType: 'timetable',
+      referenceId: completeEntry[0].id,
+      newValue: JSON.stringify(completeEntry[0]),
+      severity: 'success',
+    });
+
     return NextResponse.json(
       {
         message: 'Timetable entry created successfully',
@@ -350,6 +421,120 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('POST error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error: ' + (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id || isNaN(parseInt(id))) {
+      return NextResponse.json(
+        { error: 'Valid ID is required', code: 'INVALID_ID' },
+        { status: 400 }
+      );
+    }
+
+    const timetableId = parseInt(id);
+
+    // Get existing timetable data with joined information
+    const existing = await db
+      .select({
+        id: timetable.id,
+        facultyId: timetable.facultyId,
+        subjectId: timetable.subjectId,
+        classroomId: timetable.classroomId,
+        dayOfWeek: timetable.dayOfWeek,
+        startTime: timetable.startTime,
+        endTime: timetable.endTime,
+        semester: timetable.semester,
+        studentGroup: timetable.studentGroup,
+        createdAt: timetable.createdAt,
+        faculty: {
+          id: faculty.id,
+          name: faculty.name,
+        },
+        subject: {
+          id: subjects.id,
+          name: subjects.name,
+        },
+      })
+      .from(timetable)
+      .leftJoin(faculty, eq(timetable.facultyId, faculty.id))
+      .leftJoin(subjects, eq(timetable.subjectId, subjects.id))
+      .where(eq(timetable.id, timetableId))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return NextResponse.json(
+        { error: 'Timetable entry not found', code: 'NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    const updates = await request.json();
+
+    // Update timetable entry
+    const updated = await db.update(timetable)
+      .set(updates)
+      .where(eq(timetable.id, timetableId))
+      .returning();
+
+    // Fetch updated entry with joined data
+    const completeUpdated = await db
+      .select({
+        id: timetable.id,
+        dayOfWeek: timetable.dayOfWeek,
+        startTime: timetable.startTime,
+        endTime: timetable.endTime,
+        semester: timetable.semester,
+        studentGroup: timetable.studentGroup,
+        createdAt: timetable.createdAt,
+        faculty: {
+          id: faculty.id,
+          name: faculty.name,
+          email: faculty.email,
+          department: faculty.department,
+        },
+        subject: {
+          id: subjects.id,
+          name: subjects.name,
+          code: subjects.code,
+          credits: subjects.credits,
+        },
+        classroom: {
+          id: classrooms.id,
+          roomNumber: classrooms.roomNumber,
+          building: classrooms.building,
+          capacity: classrooms.capacity,
+        },
+      })
+      .from(timetable)
+      .leftJoin(faculty, eq(timetable.facultyId, faculty.id))
+      .leftJoin(subjects, eq(timetable.subjectId, subjects.id))
+      .leftJoin(classrooms, eq(timetable.classroomId, classrooms.id))
+      .where(eq(timetable.id, timetableId))
+      .limit(1);
+
+    // Log activity
+    await logActivity({
+      actionType: 'TIMETABLE_MODIFIED',
+      description: `Class modified: ${existing[0].subject?.name} on ${existing[0].dayOfWeek}`,
+      referenceType: 'timetable',
+      referenceId: timetableId,
+      previousValue: JSON.stringify(existing[0]),
+      newValue: JSON.stringify(completeUpdated[0]),
+      severity: 'info',
+    });
+
+    return NextResponse.json(completeUpdated[0], { status: 200 });
+  } catch (error) {
+    console.error('PUT error:', error);
     return NextResponse.json(
       { error: 'Internal server error: ' + (error as Error).message },
       { status: 500 }
@@ -370,11 +555,33 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if entry exists
+    const timetableId = parseInt(id);
+
+    // Check if entry exists and get joined data
     const existing = await db
-      .select()
+      .select({
+        id: timetable.id,
+        dayOfWeek: timetable.dayOfWeek,
+        startTime: timetable.startTime,
+        endTime: timetable.endTime,
+        semester: timetable.semester,
+        studentGroup: timetable.studentGroup,
+        createdAt: timetable.createdAt,
+        faculty: {
+          name: faculty.name,
+        },
+        subject: {
+          name: subjects.name,
+        },
+        classroom: {
+          roomNumber: classrooms.roomNumber,
+        },
+      })
       .from(timetable)
-      .where(eq(timetable.id, parseInt(id)))
+      .leftJoin(faculty, eq(timetable.facultyId, faculty.id))
+      .leftJoin(subjects, eq(timetable.subjectId, subjects.id))
+      .leftJoin(classrooms, eq(timetable.classroomId, classrooms.id))
+      .where(eq(timetable.id, timetableId))
       .limit(1);
 
     if (existing.length === 0) {
@@ -387,8 +594,18 @@ export async function DELETE(request: NextRequest) {
     // Delete the entry
     const deleted = await db
       .delete(timetable)
-      .where(eq(timetable.id, parseInt(id)))
+      .where(eq(timetable.id, timetableId))
       .returning();
+
+    // Log activity
+    await logActivity({
+      actionType: 'TIMETABLE_DELETED',
+      description: `Class removed: ${existing[0].subject?.name} on ${existing[0].dayOfWeek} at ${existing[0].startTime}`,
+      referenceType: 'timetable',
+      referenceId: existing[0].id,
+      previousValue: JSON.stringify(existing[0]),
+      severity: 'warning',
+    });
 
     return NextResponse.json(
       {
