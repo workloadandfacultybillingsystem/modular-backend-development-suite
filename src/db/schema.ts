@@ -131,3 +131,26 @@ export const workloadAnalytics = sqliteTable('workload_analytics', {
   estimatedSalary: integer('estimated_salary').notNull(),
   computedAt: text('computed_at').notNull(),
 });
+
+// Add salary_slips table for comprehensive salary management
+export const salarySlips = sqliteTable('salary_slips', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  facultyId: integer('faculty_id').notNull().references(() => faculty.id),
+  month: integer('month').notNull(),
+  year: integer('year').notNull(),
+  totalLectures: integer('total_lectures').notNull(),
+  totalPracticals: integer('total_practicals').notNull(),
+  totalTutorials: integer('total_tutorials').notNull(),
+  totalHours: integer('total_hours').notNull(),
+  hourlyRateLecture: integer('hourly_rate_lecture').notNull(),
+  hourlyRatePractical: integer('hourly_rate_practical').notNull(),
+  hourlyRateTutorial: integer('hourly_rate_tutorial').notNull(),
+  baseSalary: integer('base_salary').notNull(),
+  extraClassBonus: integer('extra_class_bonus').notNull(),
+  makeupClassBonus: integer('makeup_class_bonus').notNull(),
+  grossSalary: integer('gross_salary').notNull(),
+  deductions: integer('deductions').notNull(),
+  netSalary: integer('net_salary').notNull(),
+  generatedAt: text('generated_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
