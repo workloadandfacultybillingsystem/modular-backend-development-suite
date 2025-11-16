@@ -14,7 +14,8 @@ import {
   Grid3x3,
   Zap,
   History,
-  Bell
+  Bell,
+  BarChart3
 } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
@@ -57,10 +58,16 @@ export default function Home() {
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
+            <Link href="/analytics">
+              <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                View Analytics
+              </Button>
+            </Link>
             <Link href="/activity-logs">
               <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
                 <History className="w-5 h-5 mr-2" />
-                View Activity Logs
+                Activity Logs
               </Button>
             </Link>
           </div>

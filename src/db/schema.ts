@@ -35,6 +35,10 @@ export const timetable = sqliteTable('timetable', {
   endTime: text('end_time').notNull(),
   semester: text('semester').notNull(),
   studentGroup: text('student_group').notNull(),
+  classType: text('class_type').notNull(),
+  isExtraClass: integer('is_extra_class', { mode: 'boolean' }).default(false),
+  isMakeupClass: integer('is_makeup_class', { mode: 'boolean' }).default(false),
+  originalClassId: integer('original_class_id'),
   createdAt: text('created_at').notNull(),
 });
 
@@ -73,4 +77,57 @@ export const notifications = sqliteTable('notifications', {
   sentAt: text('sent_at').notNull(),
   readAt: text('read_at'),
   createdAt: text('created_at').notNull(),
+});
+
+// Add new holidays table
+export const holidays = sqliteTable('holidays', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  affectsDepartment: text('affects_department'),
+  createdAt: text('created_at').notNull(),
+});
+
+// Add new salary_rates table
+export const salaryRates = sqliteTable('salary_rates', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  facultyId: integer('faculty_id').notNull().references(() => faculty.id),
+  lectureRatePerHour: integer('lecture_rate_per_hour').notNull(),
+  practicalRatePerHour: integer('practical_rate_per_hour').notNull(),
+  tutorialRatePerHour: integer('tutorial_rate_per_hour').notNull(),
+  extraClassBonus: integer('extra_class_bonus').notNull(),
+  makeupClassBonus: integer('makeup_class_bonus').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+// Add new syllabus_requirements table
+export const syllabusRequirements = sqliteTable('syllabus_requirements', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  subjectId: integer('subject_id').notNull().references(() => subjects.id),
+  semester: text('semester').notNull(),
+  requiredLectureHours: integer('required_lecture_hours').notNull(),
+  requiredPracticalHours: integer('required_practical_hours').notNull(),
+  requiredTutorialHours: integer('required_tutorial_hours').notNull(),
+  totalWeeks: integer('total_weeks').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+// Add new workload_analytics table
+export const workloadAnalytics = sqliteTable('workload_analytics', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  facultyId: integer('faculty_id').notNull().references(() => faculty.id),
+  period: text('period').notNull(),
+  periodStart: text('period_start').notNull(),
+  periodEnd: text('period_end').notNull(),
+  totalLectures: integer('total_lectures').notNull(),
+  totalPracticals: integer('total_practicals').notNull(),
+  totalTutorials: integer('total_tutorials').notNull(),
+  totalHours: integer('total_hours').notNull(),
+  extraClasses: integer('extra_classes').notNull(),
+  makeupClasses: integer('makeup_classes').notNull(),
+  subjectsCount: integer('subjects_count').notNull(),
+  estimatedSalary: integer('estimated_salary').notNull(),
+  computedAt: text('computed_at').notNull(),
 });
