@@ -55,3 +55,22 @@ export const activityLogs = sqliteTable('activity_logs', {
   isSystemAction: integer('is_system_action', { mode: 'boolean' }).default(false),
   createdAt: text('created_at').notNull(),
 });
+
+// Add notifications table at the end
+export const notifications = sqliteTable('notifications', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  notificationType: text('notification_type').notNull(),
+  severity: text('severity').notNull(),
+  targetUserType: text('target_user_type').notNull(),
+  targetUserId: integer('target_user_id'),
+  referenceType: text('reference_type'),
+  referenceId: integer('reference_id'),
+  metadata: text('metadata'),
+  isRead: integer('is_read', { mode: 'boolean' }).default(false),
+  isSent: integer('is_sent', { mode: 'boolean' }).default(true),
+  sentAt: text('sent_at').notNull(),
+  readAt: text('read_at'),
+  createdAt: text('created_at').notNull(),
+});

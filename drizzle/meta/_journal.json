@@ -15,6 +15,13 @@
       "when": 1763195823109,
       "tag": "0001_fluffy_flatman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1763269277215,
+      "tag": "0002_tidy_naoko",
+      "breakpoints": true
     }
   ]
 }

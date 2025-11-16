@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { timetable, faculty, subjects, classrooms, activityLogs } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { notifyOnTimetableCreated, notifyOnConflict } from '@/lib/notification-service';
 
 // Helper function to log activity
 async function logActivity(activityData: {
@@ -260,8 +261,9 @@ export async function POST(request: NextRequest) {
         // Conflict 1: Faculty conflict
         if (entry.facultyId === parseInt(facultyId)) {
           const conflictDetails = {
-            type: 'faculty',
-            facultyName: entry.facultyName,
+            type: 'faculty' as const,
+            facultyId: entry.facultyId,
+            facultyName: entry.facultyName || 'Unknown Faculty',
             day: dayOfWeek,
             existingStartTime: entry.startTime,
             existingEndTime: entry.endTime,
@@ -277,6 +279,9 @@ export async function POST(request: NextRequest) {
             severity: 'warning',
           });
 
+          // Send notification about conflict
+          await notifyOnConflict(conflictDetails);
+
           return NextResponse.json(
             {
               error: `Faculty conflict: ${entry.facultyName} already has a class on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
@@ -290,8 +295,8 @@ export async function POST(request: NextRequest) {
         // Conflict 2: Classroom conflict
         if (entry.classroomId === parseInt(classroomId)) {
           const conflictDetails = {
-            type: 'classroom',
-            classroomNumber: entry.classroomNumber,
+            type: 'classroom' as const,
+            classroomNumber: entry.classroomNumber || 'Unknown Room',
             day: dayOfWeek,
             existingStartTime: entry.startTime,
             existingEndTime: entry.endTime,
@@ -307,6 +312,9 @@ export async function POST(request: NextRequest) {
             severity: 'warning',
           });
 
+          // Send notification about conflict
+          await notifyOnConflict(conflictDetails);
+
           return NextResponse.json(
             {
               error: `Classroom conflict: ${entry.classroomNumber} is already booked on ${dayOfWeek} from ${entry.startTime} to ${entry.endTime}`,
@@ -320,7 +328,7 @@ export async function POST(request: NextRequest) {
         // Conflict 3: Student group conflict (same semester and student group)
         if (entry.semester === semester && entry.studentGroup === studentGroup) {
           const conflictDetails = {
-            type: 'student_group',
+            type: 'student_group' as const,
             semester: semester,
             studentGroup: studentGroup,
             day: dayOfWeek,
@@ -337,6 +345,9 @@ export async function POST(request: NextRequest) {
             metadata: JSON.stringify(conflictDetails),
             severity: 'warning',
           });
+
+          // Send notification about conflict
+          await notifyOnConflict(conflictDetails);
 
           return NextResponse.json(
             {
@@ -410,6 +421,20 @@ export async function POST(request: NextRequest) {
       referenceId: completeEntry[0].id,
       newValue: JSON.stringify(completeEntry[0]),
       severity: 'success',
+    });
+
+    // Send notification about new timetable entry
+    await notifyOnTimetableCreated({
+      id: completeEntry[0].id,
+      facultyId: completeEntry[0].faculty?.id || 0,
+      facultyName: completeEntry[0].faculty?.name || 'Unknown',
+      subjectName: completeEntry[0].subject?.name || 'Unknown Subject',
+      classroomNumber: completeEntry[0].classroom?.roomNumber || 'Unknown Room',
+      dayOfWeek,
+      startTime,
+      endTime,
+      semester,
+      studentGroup,
     });
 
     return NextResponse.json(
